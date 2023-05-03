@@ -31,18 +31,16 @@ app.post("/urls", (req, res) => {
   let newID = generateRandomString();
   urlDatabase[newID] = req.body.longURL;
   console.log(urlDatabase);
-  // urlDatabase[newID] = {
-  //   shortURL: newID,
-  //   longURL: ,
-  // }
   res.redirect(`/urls/${newID}`);
 });
 
+app.post("/urls/:id/delete", (req, res) => {
+  delete urlDatabase[req.params.id];
+  res.redirect("/urls")
+})
+
 app.get("/u/:id", (req, res) => {
   const longURL = urlDatabase[req.params.id];
-  console.log("a", urlDatabase);
-  console.log("b", urlDatabase[req.params.id]);
-  console.log("c", urlDatabase[req.params.id].longURL);
   res.redirect(longURL);
 });
 
