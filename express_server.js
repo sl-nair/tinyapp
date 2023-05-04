@@ -26,6 +26,13 @@ app.get("/", (req, res) => {
   res.redirect("/urls")
 });
 
+app.post("/login", (req, res) => {
+  console.log(req.body.username)
+  const username = req.body.username
+  res.cookie("username", username)
+  res.redirect("/urls")
+});
+
 //route that posts the new short url and the long url
 app.post("/urls", (req, res) => {
   let newID = generateRandomString();
