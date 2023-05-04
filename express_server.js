@@ -1,15 +1,17 @@
 const express = require('express');
 const app = express();
+const cookieParser = require('cookie-parser')
+
 const PORT = 8080;
 
 app.set("view engine", "ejs");
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
 
 const urlDatabase = {
   "b2xVn2": "http://www.lighthouselabs.ca",
   "9sm5xK": "http://www.google.com"
 };
-
-app.use(express.urlencoded({ extended: true }));
 
 //function to create the short url id
 function generateRandomString() {
@@ -32,6 +34,7 @@ app.post("/login", (req, res) => {
   res.cookie("username", username)
   res.redirect("/urls")
 });
+
 
 //route that posts the new short url and the long url
 app.post("/urls", (req, res) => {
@@ -60,8 +63,14 @@ app.get("/u/:id", (req, res) => {
 });
 // get route to render the index ejs on the urls page
 app.get("/urls", (req, res) => {
-  const templateVars = {urls: urlDatabase};
-  res.render("urls_index", templateVars);
+  const username = req.cookies.username;
+  let templateVars;
+  if(username) { 
+    templateVars = { urls: urlDatabase, username: username};
+  } else {
+    templateVars = { urls: urlDatabase, username: false}
+  }
+  res.render("urls_index", templateVars); 
 });
 //renders the _new ejs when clients wants to create a new server
 app.get("/urls/new", (req, res) => {
