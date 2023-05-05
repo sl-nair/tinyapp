@@ -29,12 +29,15 @@ app.get("/", (req, res) => {
 });
 
 app.post("/login", (req, res) => {
-  console.log(req.body.username)
-  const username = req.body.username
+  const username = req.body.username;
   res.cookie("username", username)
   res.redirect("/urls")
 });
 
+app.post("/logout", (req, res) => {
+  res.clearCookie("username");
+  res.redirect("/");
+})
 
 //route that posts the new short url and the long url
 app.post("/urls", (req, res) => {
@@ -74,11 +77,24 @@ app.get("/urls", (req, res) => {
 });
 //renders the _new ejs when clients wants to create a new server
 app.get("/urls/new", (req, res) => {
-  res.render("urls_new");
+  const username = req.cookies.username;
+  let templateVars;
+  if(username) { 
+    templateVars = { username: username};
+  } else {
+    templateVars = { username: false}
+  }
+  res.render("urls_new", templateVars);
 });
 // 
 app.get("/urls/:id", (req, res) => {
-   const templateVars = {id: req.params.id, longURL: urlDatabase[req.params.id]}
+  const username = req.cookies.username;
+  let templateVars;
+  if(username) { 
+    templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id], urls: urlDatabase, username: username};
+  } else {
+    templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id], urls: urlDatabase, username: false}
+  }
   res.render("urls_show", templateVars);
 });
 
