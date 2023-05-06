@@ -24,16 +24,25 @@ function generateRandomString() {
   return result
 };
 
+let username = false;
+
 app.get("/", (req, res) => {
-  res.redirect("/urls")
+  res.redirect("/urls");
 });
 
+//login route
 app.post("/login", (req, res) => {
-  const username = req.body.username;
-  res.cookie("username", username)
-  res.redirect("/urls")
+  username = req.body.username;
+  res.cookie("username", username);
+  res.redirect("/urls"); 
 });
 
+app.get("/register", (req, res) => {
+  const templateVars = {username: username};
+  res.render("urls_registration", templateVars);
+})
+
+//logout route
 app.post("/logout", (req, res) => {
   res.clearCookie("username");
   res.redirect("/");
@@ -66,7 +75,7 @@ app.get("/u/:id", (req, res) => {
 });
 // get route to render the index ejs on the urls page
 app.get("/urls", (req, res) => {
-  const username = req.cookies.username;
+  username = req.cookies.username;
   let templateVars;
   if(username) { 
     templateVars = { urls: urlDatabase, username: username};
@@ -77,7 +86,7 @@ app.get("/urls", (req, res) => {
 });
 //renders the _new ejs when clients wants to create a new server
 app.get("/urls/new", (req, res) => {
-  const username = req.cookies.username;
+  username = req.cookies.username;
   let templateVars;
   if(username) { 
     templateVars = { username: username};
@@ -86,9 +95,9 @@ app.get("/urls/new", (req, res) => {
   }
   res.render("urls_new", templateVars);
 });
-// 
+
 app.get("/urls/:id", (req, res) => {
-  const username = req.cookies.username;
+  username = req.cookies.username;
   let templateVars;
   if(username) { 
     templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id], urls: urlDatabase, username: username};
