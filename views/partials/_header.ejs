@@ -13,20 +13,19 @@
       <div>
         <% if(user===undefined){ %>
           <form class="form-inline" action="/login" method="POST">
-            <span>
-              <a href="/login" style="color:white; margin: 1em; padding: 0.1em 0.5em; border-width: 1em;">Login</a>  </span>
-               <div style="color: lightgray; margin: 1em; padding: 0.1em 0.5em; border-width: 1em;">or</div> 
-              <span><a href="/register" style="color:white; margin: 1em; padding: 0.1em 0.5em; border-width: 1em;"> Register</a> </span>
-           
+            <div class="navbar-nav">
+              <a class="nav-item nav-link" style= "margin: 1em" href="/login">Login</a>
+              <a class="nav-item nav-link" style= "margin: 1em" href="/register">Register</a>
+            </div>
           </form>
-        <% } else{ %>
-          <div>
-            Logged in as: <%= user.email %>
-          </div>
-          <form class="form-inline" method="POST" action="/logout/">
-            <button type="submit">Logout</button>
-          </form>
-        <% } %>
+          <% } else{ %>
+            <div>
+              Logged in as: <%= user.email %>
+            </div>
+            <form class="form-inline" method="POST" action="/logout/">
+              <button type="submit">Logout</button>
+            </form>
+            <% } %>
       </div>
   </nav>
 </header>

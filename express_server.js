@@ -40,14 +40,44 @@ const getUserByEmail = (email) => {
   return null
 }
 
+const getPassword = (password) => {
+  for (const user in users) {
+    if (password === users[user].password) {
+      return user;
+    }
+  }
+  return null
+}
+
+const getID = (email) => {
+  for (const user in users) {
+    if (email === users[user].email) {
+      return users[user].id;
+    }
+  }
+  return null
+}
 app.get("/", (req, res) => {
-  // username = req.cookies.user_ID;
   res.redirect("/urls");
 });
 
 //login route
 app.post("/login", (req, res) => {
-  res.redirect("/urls");
+  const email = req.body.email;
+  const password = req.body.password;
+  const currentUserEmail = getUserByEmail(email)
+
+  if (currentUserEmail === null) {
+    res.status(403).send("403 Error - User does not exist. Please register.");
+  } else if (getPassword(password) === null) {
+    res.status(403).send("403 Error - Password does not match.");
+  } else {
+    // set cookie with user id
+    const currentID = getID(email)
+    res.cookie("user_ID", currentID);
+    res.redirect("/urls");
+  }
+    
 });
 
 app.get("/login", (req, res) => {
@@ -89,7 +119,7 @@ app.get("/register", (req, res) => {
 //logout route
 app.post("/logout", (req, res) => {
   res.clearCookie("user_ID");
-  res.redirect("/");
+  res.redirect("/login");
 })
 
 //route that posts the new short url and the long url
@@ -120,7 +150,6 @@ app.get("/u/:id", (req, res) => {
 // get route to render the index ejs on the urls page
 app.get("/urls", (req, res) => {
   username = req.cookies.user_ID;
-  // console.log(users[username], "this is the username"); 
   templateVars = { urls: urlDatabase, user: users[username] };
   res.render("urls_index", templateVars);
 });
