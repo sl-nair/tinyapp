@@ -19,6 +19,7 @@ let users = {
 
 let username;
 
+//HELPER FUNCTIONS
 //function to create the short url id
 function generateRandomString() {
   let result = "";
@@ -30,7 +31,14 @@ function generateRandomString() {
   return result
 };
 
-
+const getUserByEmail = (email) => {
+  for (const user in users) {
+    if (email === users[user].email) {
+      return user;
+    }
+  }
+  return null
+}
 
 app.get("/", (req, res) => {
   // username = req.cookies.user_ID;
@@ -39,22 +47,37 @@ app.get("/", (req, res) => {
 
 //login route
 app.post("/login", (req, res) => {
-  username = req.body.username;
-  res.cookie("username", username);
   res.redirect("/urls");
 });
+
+app.get("/login", (req, res) => {
+  username = req.cookies.user_ID;
+  templateVars = { user: users[username] };
+  res.render("urls_login", templateVars)
+
+})
 
 //Posts the registration information
 app.post("/register", (req, res) => {
   userID = generateRandomString();
-  users[userID] = {
+  const email = req.body.email;
+  const password = req.body.password;
+  const userObj ={
     id: userID,
-    email: req.body.email,
-    password: req.body.password
+    email,
+    password,
   };
-  res.cookie("user_ID", userID);
+  const currentUserEmail = getUserByEmail(email)
 
-  res.redirect("/urls");
+  if (email === "" || password === "") {
+    res.status(400).send("400 Error - Email or password field empty")
+  } else if (currentUserEmail === null) {
+    users[userID] = userObj;
+    res.cookie("user_ID", userID);
+    res.redirect("/urls");
+  } else {
+    res.status(400).send("400 Error - User already exists. Please login.")
+  };
 })
 
 // Route to get the register page
