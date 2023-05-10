@@ -65,8 +65,8 @@ const getID = (email) => {
 };
 
 const urlsForUser = (id) => {
-  const userURLs = {}; 
-  for (let url in urlDatabase){
+  const userURLs = {};
+  for (let url in urlDatabase) {
     if (id === urlDatabase[url].userID) {
       userURLs[url] = urlDatabase[url];
     }
@@ -87,7 +87,7 @@ app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const currentUserEmail = getUserByEmail(email);
- 
+
   if (currentUserEmail === null) {
     res.status(403).send("403 Error - User does not exist. Please register.");
   } else if (getPassword(password) === null) {
@@ -157,7 +157,7 @@ app.post("/logout", (req, res) => {
 app.post("/urls", (req, res) => {
   let newShortURL = generateRandomString();
   if (req.cookies.user_ID) {
-      urlDatabase[newShortURL] = {
+    urlDatabase[newShortURL] = {
       longURL: req.body.longURL,
       userID: req.cookies.user_ID,
     }
@@ -169,8 +169,16 @@ app.post("/urls", (req, res) => {
 
 //post route for the deletion of a url from the database
 app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id];
-  res.redirect("/urls");
+  if (!username) {
+    res.status(403).send("403 Error - Please login");
+  } else if (!urlsForUser(username)[req.params.id]) {
+    res.status(403).send("403 Error - URL does not belong to current user");
+  } else if (!urlDatabase[req.params.id]) {
+    res.send("404 Error: This URL does not exist");
+  } else {
+    delete urlDatabase[req.params.id];
+     res.redirect("/urls");
+  };  
 });
 
 //post route to update the longurl when client edits
@@ -192,12 +200,11 @@ app.get("/u/:id", (req, res) => {
 // get route to render the index ejs on the urls page
 app.get("/urls", (req, res) => {
   username = req.cookies.user_ID;
-  if (!username){
+  if (!username) {
     res.redirect("/login");
   } else {
-  const templateVars = { urls: urlsForUser(username), user: users[username] };
-  console.log(users)
-  res.render("urls_index", templateVars);
+    const templateVars = { urls: urlsForUser(username), user: users[username] };
+    res.render("urls_index", templateVars);
   }
 });
 //renders the _new ejs when clients wants to create a new server
@@ -213,13 +220,13 @@ app.get("/urls/new", (req, res) => {
 
 app.get("/urls/:id", (req, res) => {
   username = req.cookies.user_ID;
-  if (!username){
+  if (!username) {
     res.status(403).send("403 Error - Please login");
-  } else if (!urlsForUser(username)[req.params.id]){
+  } else if (!urlsForUser(username)[req.params.id]) {
     res.status(403).send("403 Error - URL does not belong to current user");
   } else {
     const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id], urls: urlDatabase, user: users[username] };
-  res.render("urls_show", templateVars);
+    res.render("urls_show", templateVars);
   }
 });
 
