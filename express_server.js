@@ -1,6 +1,7 @@
 const express = require('express');
 const app = express();
 const cookieParser = require('cookie-parser');
+const bcrypt = require("bcryptjs");
 const PORT = 8080;
 
 app.set("view engine", "ejs");
@@ -24,6 +25,7 @@ let users = {
 let login = false; //test
 
 let username;
+
 
 //HELPER FUNCTIONS
 //function to create the short url id
@@ -87,18 +89,24 @@ app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
   const currentUserEmail = getUserByEmail(email);
+  const userPassword = getPassword(password)
 
-  if (currentUserEmail === null) {
-    res.status(403).send("403 Error - User does not exist. Please register.");
+  if (currentUserEmail === email) {
+    if (bcrypt.compareSync(password, userPassword)) {
+      // set cookie with user id
+      const currentID = getID(email);
+      //login = true// test
+      res.cookie("user_ID", currentID);
+      res.redirect("/urls");
+    }
+
+
+res.status(403).send("403 Error - User does not exist. Please register.");
   } else if (getPassword(password) === null) {
-    res.status(403).send("403 Error - Password does not match.");
-  } else {
-    // set cookie with user id
-    const currentID = getID(email);
-    //login = true// test
-    res.cookie("user_ID", currentID);
-    res.redirect("/urls");
-  }
+  res.status(403).send("403 Error - Password does not match.");
+} else {
+
+}
 
 });
 
@@ -117,7 +125,7 @@ app.get("/login", (req, res) => {
 app.post("/register", (req, res) => {
   const userID = generateRandomString();
   const email = req.body.email;
-  const password = req.body.password;
+  const password = bcrypt.hashSync(req.body.password, 10);
   const userObj = {
     id: userID,
     email,
@@ -177,8 +185,8 @@ app.post("/urls/:id/delete", (req, res) => {
     res.send("404 Error: This URL does not exist");
   } else {
     delete urlDatabase[req.params.id];
-     res.redirect("/urls");
-  };  
+    res.redirect("/urls");
+  };
 });
 
 //post route to update the longurl when client edits
