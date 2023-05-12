@@ -1,11 +1,16 @@
 const express = require('express');
 const app = express();
-const cookieParser = require('cookie-parser');
+const cookieSession = require('cookie-session');
 const bcrypt = require("bcryptjs");
 const PORT = 8080;
+const { getUser , urlsForUser } = require('./helpers');
 
 app.set("view engine", "ejs");
-app.use(cookieParser());
+app.use(cookieSession({
+  name: 'session',
+  keys: ['frX0pYXolqDFoIXt4SJZ4xcEYeqfzSst'],
+
+}));
 app.use(express.urlencoded({ extended: true }));
 
 const urlDatabase = {
@@ -22,14 +27,12 @@ const urlDatabase = {
 let users = {
 };
 
-let login = false; //test
 
 let username;
 
-
 //HELPER FUNCTIONS
 //function to create the short url id
-const generateRandomString = function () {
+const generateRandomString = function() {
   let result = "";
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let charLength = chars.length;
@@ -39,80 +42,59 @@ const generateRandomString = function () {
   return result;
 };
 
-const getUserByEmail = (email) => {
-  for (const user in users) {
-    if (email === users[user].email) {
-      return user;
-    }
-  }
-  return null;
-};
-
-const getPassword = (password) => {
-  for (const user in users) {
-    if (password === users[user].password) {
-      return user;
-    }
-  }
-  return null;
-};
-
-const getID = (email) => {
-  for (const user in users) {
-    if (email === users[user].email) {
-      return users[user].id;
-    }
-  }
-  return null;
-};
-
-const urlsForUser = (id) => {
-  const userURLs = {};
-  for (let url in urlDatabase) {
-    if (id === urlDatabase[url].userID) {
-      userURLs[url] = urlDatabase[url];
-    }
-  }
-  return userURLs
-};
-
 
 
 //GET ROUTES
 
 app.get("/", (req, res) => {
-  res.redirect("/urls");
+  username = req.session.user_ID;
+  if (username) {
+    res.redirect("/urls");
+  } else {
+    const templateVars = { user: users[username] };
+    res.render("urls_login", templateVars);
+  }
+});
+
+// get route to render the index ejs on the urls page
+app.get("/urls", (req, res) => {
+  username = req.session.user_ID;
+  if (!username) {
+    res.redirect("/login");
+  } else {
+    const templateVars = { urls: urlsForUser(username, urlDatabase), user: users[username] };
+    res.render("urls_index", templateVars);
+  }
 });
 
 //login route
 app.post("/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
-  const currentUserEmail = getUserByEmail(email);
-  const userPassword = getPassword(password)
+  try {
+    const currentUserEmail = getUser(email, users).email;
+    const userPassword = getUser(email,users).password;
 
-  if (currentUserEmail === email) {
-    if (bcrypt.compareSync(password, userPassword)) {
-      // set cookie with user id
-      const currentID = getID(email);
-      //login = true// test
-      res.cookie("user_ID", currentID);
-      res.redirect("/urls");
+    if (currentUserEmail === email) {
+      if (bcrypt.compareSync(password, userPassword)) {
+        // set cookie with user id when logging in
+        const currentID = getUser(email, users).id;
+        req.session.user_ID = currentID;
+        res.redirect("/urls");
+      } else {
+        res.status(403).send("403 Error - Password does not match.");
+      }
+    } else {
+      res.status(403).send("403 Error - User does not exist. Please register.");
     }
-
-
-res.status(403).send("403 Error - User does not exist. Please register.");
-  } else if (getPassword(password) === null) {
-  res.status(403).send("403 Error - Password does not match.");
-} else {
-
-}
-
+  } catch (error) {
+    res.status(403).send("403 Error - User does not exist. Please register.");
+  }
 });
 
 app.get("/login", (req, res) => {
-  username = req.cookies.user_ID;
-  if (req.cookies.user_ID) {
+  username = req.session.user_ID;
+  if (username) {
     res.redirect("/urls");
   } else {
     const templateVars = { user: users[username] };
@@ -125,29 +107,30 @@ app.get("/login", (req, res) => {
 app.post("/register", (req, res) => {
   const userID = generateRandomString();
   const email = req.body.email;
-  const password = bcrypt.hashSync(req.body.password, 10);
+  const password = req.body.password;
+  const hashedPassoword = bcrypt.hashSync(req.body.password, 10);
   const userObj = {
     id: userID,
     email,
-    password,
+    password: hashedPassoword,
   };
-  const currentUserEmail = getUserByEmail(email);
+  const currentUserEmail = getUser(email, users);
 
-  if (email === "" || password === "") {
+  if ((email === "" &&  password !== "") || (email !== "" &&  password === "") || (email === "" &&  password === "")) {
     res.status(400).send("400 Error - Email or password field empty");
   } else if (currentUserEmail !== null) {
     res.status(400).send("400 Error - User already exists. Please login.");
   } else {
     users[userID] = userObj;
-    res.cookie("user_ID", userID);
+    req.session.user_ID = userID;
     res.redirect("/urls");
   }
 });
 
 // Route to get the register page
 app.get("/register", (req, res) => {
-  username = req.cookies.user_ID;
-  if (req.cookies.user_ID) {
+  username = req.session.user_ID;
+  if (username) {
     res.redirect("/urls");
   } else {
     const templateVars = { user: users[username] };
@@ -157,18 +140,18 @@ app.get("/register", (req, res) => {
 
 //logout route
 app.post("/logout", (req, res) => {
-  res.clearCookie("user_ID");
+  req.session = null;
   res.redirect("/login");
 });
 
 //route that posts the new short url and the long url
 app.post("/urls", (req, res) => {
   let newShortURL = generateRandomString();
-  if (req.cookies.user_ID) {
+  if (req.session.user_ID) {
     urlDatabase[newShortURL] = {
       longURL: req.body.longURL,
-      userID: req.cookies.user_ID,
-    }
+      userID: req.session.user_ID,
+    };
     res.redirect(`/urls/${newShortURL}`);
   } else {
     res.send("Please login to shorten URLs");
@@ -179,14 +162,14 @@ app.post("/urls", (req, res) => {
 app.post("/urls/:id/delete", (req, res) => {
   if (!username) {
     res.status(403).send("403 Error - Please login");
-  } else if (!urlsForUser(username)[req.params.id]) {
+  } else if (!urlsForUser(username, urlDatabase)[req.params.id]) {
     res.status(403).send("403 Error - URL does not belong to current user");
   } else if (!urlDatabase[req.params.id]) {
     res.send("404 Error: This URL does not exist");
   } else {
     delete urlDatabase[req.params.id];
     res.redirect("/urls");
-  };
+  }
 });
 
 //post route to update the longurl when client edits
@@ -199,38 +182,29 @@ app.post("/urls/:id", (req, res) => {
 //redirects the short url to the long url browser
 app.get("/u/:id", (req, res) => {
   if (urlDatabase[req.params.id]) {
-    const longURL = urlDatabase[req.params.id];
+    const longURL = urlDatabase[req.params.id].longURL;
     res.redirect(longURL);
   } else {
     res.send("404 Error: This URL does not exist");
   }
 });
-// get route to render the index ejs on the urls page
-app.get("/urls", (req, res) => {
-  username = req.cookies.user_ID;
-  if (!username) {
-    res.redirect("/login");
-  } else {
-    const templateVars = { urls: urlsForUser(username), user: users[username] };
-    res.render("urls_index", templateVars);
-  }
-});
+
 //renders the _new ejs when clients wants to create a new server
 app.get("/urls/new", (req, res) => {
-  username = req.cookies.user_ID;
+  username = req.session.user_ID;
   if (username) {
     const templateVars = { user: users[username] };
     res.render("urls_new", templateVars);
   } else {
     res.redirect("/login");
-  };
+  }
 });
-
+//renders the urls_show template to see infomation about the specific shortURL/longURL pairing
 app.get("/urls/:id", (req, res) => {
-  username = req.cookies.user_ID;
+  username = req.session.user_ID;
   if (!username) {
     res.status(403).send("403 Error - Please login");
-  } else if (!urlsForUser(username)[req.params.id]) {
+  } else if (!urlsForUser(username, urlDatabase)[req.params.id]) {
     res.status(403).send("403 Error - URL does not belong to current user");
   } else {
     const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id], urls: urlDatabase, user: users[username] };
